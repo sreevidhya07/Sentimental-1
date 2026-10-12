@@ -1,0 +1,185 @@
+# SENTIMENT ANALYSIS USING MACHINE LEARNING AND NLP
+# Positive, Negative, and Neutral Sentiment Classification
+
+import pandas as pd
+import re
+
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
+import matplotlib.pyplot as plt
+
+# --------------------------------------------------
+# 1. CREATE A SAMPLE DATASET
+# --------------------------------------------------
+
+data = {
+    "text": [
+        "I love this product",
+        "This product is amazing",
+        "The service is excellent",
+        "I am very happy",
+        "This is a wonderful experience",
+        "The food tastes great",
+        "I really enjoyed this movie",
+        "The quality is fantastic",
+        "The product works perfectly",
+        "I am satisfied with the service",
+        "This is the best purchase",
+        "The staff were very helpful",
+
+        "I hate this product",
+        "This is a terrible experience",
+        "The service is very bad",
+        "I am very disappointed",
+        "The food tastes awful",
+        "I dislike this movie",
+        "The quality is horrible",
+        "The product stopped working",
+        "I am unhappy with the service",
+        "This was a waste of money",
+        "The staff were rude",
+        "I regret buying this product",
+
+        "The product arrived today",
+        "The package contains two items",
+        "The meeting starts at ten",
+        "I received the order yesterday",
+        "The phone has a large screen",
+        "The book contains ten chapters",
+        "The shop opens at nine",
+        "The product is available online",
+        "The event is scheduled for Monday",
+        "The parcel was delivered this morning",
+        "The device has three buttons",
+        "The class begins at eight"
+    ],
+    "sentiment": (
+        ["Positive"] * 12 +
+        ["Negative"] * 12 +
+        ["Neutral"] * 12
+    )
+}
+
+df = pd.DataFrame(data)
+
+print("DATASET PREVIEW")
+print(df.head(10))
+
+print("\nNumber of examples:", len(df))
+print("\nSentiment distribution:")
+print(df["sentiment"].value_counts())
+
+# --------------------------------------------------
+# 2. TEXT PREPROCESSING
+# --------------------------------------------------
+
+def clean_text(text):
+    text = text.lower()
+    text = re.sub(r"[^a-z\s]", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+df["clean_text"] = df["text"].apply(clean_text)
+
+# --------------------------------------------------
+# 3. SPLIT DATA INTO TRAINING AND TESTING SETS
+# --------------------------------------------------
+
+X_train, X_test, y_train, y_test = train_test_split(
+    df["clean_text"],
+    df["sentiment"],
+    test_size=0.25,
+    random_state=42,
+    stratify=df["sentiment"]
+)
+
+# --------------------------------------------------
+# 4. CREATE AND TRAIN THE MACHINE LEARNING MODEL
+# --------------------------------------------------
+
+model = Pipeline([
+    ("tfidf", TfidfVectorizer(ngram_range=(1, 2))),
+    ("classifier", LogisticRegression(max_iter=1000))
+])
+
+model.fit(X_train, y_train)
+
+print("\nModel training completed successfully!")
+
+# --------------------------------------------------
+# 5. EVALUATE THE MODEL
+# --------------------------------------------------
+
+y_pred = model.predict(X_test)
+
+accuracy = accuracy_score(y_test, y_pred)
+
+print("\nMODEL EVALUATION")
+print("Test accuracy: {:.2f}%".format(accuracy * 100))
+
+print("\nClassification Report:")
+print(classification_report(
+    y_test,
+    y_pred,
+    zero_division=0
+))
+
+# Confusion matrix
+cm = confusion_matrix(
+    y_test,
+    y_pred,
+    labels=["Negative", "Neutral", "Positive"]
+)
+
+display_matrix = ConfusionMatrixDisplay(
+    confusion_matrix=cm,
+    display_labels=["Negative", "Neutral", "Positive"]
+)
+
+display_matrix.plot(cmap="Blues")
+plt.title("Sentiment Analysis - Confusion Matrix")
+plt.show()
+
+# --------------------------------------------------
+# 6. PREDICT SENTIMENT OF NEW TEXT
+# --------------------------------------------------
+
+def predict_sentiment(text):
+    cleaned = clean_text(text)
+
+    prediction = model.predict([cleaned])[0]
+    probabilities = model.predict_proba([cleaned])[0]
+
+    print("\nInput text:", text)
+    print("Predicted sentiment:", prediction)
+    print("\nClass probabilities:")
+
+    for label, probability in zip(
+        model.classes_, probabilities
+    ):
+        print("{}: {:.2f}%".format(
+            label, probability * 100
+        ))
+
+    return prediction
+
+# Test examples
+print("\nSAMPLE PREDICTIONS")
+
+predict_sentiment("I really love this amazing product")
+predict_sentiment("The service was terrible and disappointing")
+predict_sentiment("The package arrived yesterday")
+
+# --------------------------------------------------
+# 7. ENTER YOUR OWN SENTENCE
+# --------------------------------------------------
+
+print("\nYOUR OWN SENTIMENT ANALYSIS")
+
+user_text = input("Enter a review or sentence: ")
+predict_sentiment(user_text)
